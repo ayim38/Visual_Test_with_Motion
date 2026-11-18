@@ -21,7 +21,7 @@ CAMERA_CAPTURE_WIDTH = 640
 CAMERA_CAPTURE_HEIGHT = 480
 CAMERA_PREVIEW_WIDTH = 480
 CAMERA_PREVIEW_HEIGHT = 270
-CAMERA_PREVIEW_POSITION = (20, 20)
+CAMERA_PREVIEW_MARGIN = 20
 
 def resource_path(rel_path: str) -> str:
     """PyInstaller 実行時にも使えるようにリソースの絶対パスを返す。"""
@@ -117,7 +117,7 @@ def open_available_camera(camera_indices=CAMERA_INDEX_CANDIDATES):
     for camera_index in camera_indices:
         cap = cv2.VideoCapture(camera_index)
         if cap.isOpened():
-            print(f"Using camera index: {camera_index}")
+            print(f"使用カメラ番号: {camera_index}")
             return cap, camera_index
         cap.release()
 
@@ -130,11 +130,13 @@ def configure_camera_capture(cap):
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, CAMERA_CAPTURE_WIDTH)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_CAPTURE_HEIGHT)
 
-def configure_camera_preview_window():
+def configure_camera_preview_window(screen_width=1920):
     """カメラプレビューをメイン画面を邪魔しにくい小窓として表示する。"""
     cv2.namedWindow("camera", cv2.WINDOW_NORMAL)
     cv2.resizeWindow("camera", CAMERA_PREVIEW_WIDTH, CAMERA_PREVIEW_HEIGHT)
-    cv2.moveWindow("camera", CAMERA_PREVIEW_POSITION[0], CAMERA_PREVIEW_POSITION[1])
+    x = max(0, screen_width - CAMERA_PREVIEW_WIDTH - CAMERA_PREVIEW_MARGIN)
+    y = CAMERA_PREVIEW_MARGIN
+    cv2.moveWindow("camera", x, y)
 
 def force_terminate_program(cap=None, hands=None, exit_code=0):
     """Release resources and terminate the program immediately."""
@@ -385,7 +387,7 @@ def get_user_id_with_keyboard():
         image = display_japanese_text(image, "視機能検査 EASY Visual Check", (50, 100), font_size=100, color=(0, 0, 0))
         image = display_japanese_text(image, "運動機能検査 and Motion Check", (50, 200), font_size=100, color=(0, 0, 0))
         image = display_japanese_text(image, "IDを入力してください:", (50, 300), font_size=100, color=(0, 0, 0))
-        image = display_japanese_text(image, "Enter your ID:", (50, 400), font_size=100, color=(0, 0, 0))
+        image = display_japanese_text(image, "IDを入力し、OKを押してください", (50, 400), font_size=82, color=(0, 0, 0))
         
         cv2.putText(image, user_id, (1000, 500), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 255), 5)
         draw_keyboard(image)
@@ -750,15 +752,15 @@ def show_message(message, duration, screen_width, screen_height, font_path="C:/W
 def show_results_summary(results_summary, screen_width, screen_height):
     image = np.ones((screen_height, screen_width, 3), dtype=np.uint8) * 255
     y_offset = 100
-    font = cv2.FONT_HERSHEY_SIMPLEX
+    image = display_japanese_text(image, "検査結果", (50, y_offset), font_size=64, color=(0, 0, 0))
+    y_offset += 100
 
     for result in results_summary:
-        text = (f"Test {result['test_number']}: "
-                f"Correct: {result['correct_count']}, "
-                f"Incorrect: {result['incorrect_count']}, "
-                f"Visual Acuity: {result['visual_acuity']:.1f}")
-        cv2.putText(image, text, (50, y_offset), font, 1, (0, 0, 0), 2)
-        y_offset += 50
+        eye_label = "右目" if result["test_number"] == 1 else "左目"
+        text = (f"{eye_label}：視力 {result['visual_acuity']:.1f}    "
+                f"正答 {result['correct_count']}    誤答 {result['incorrect_count']}")
+        image = display_japanese_text(image, text, (50, y_offset), font_size=44, color=(0, 0, 0))
+        y_offset += 70
 
         # 途中経過も含めて画面に表示する
         show_image("mainview", image)
@@ -771,7 +773,7 @@ def save_results_to_csv(user_id, results_summary, filename="vision_results.csv")
     with open(out_path, mode="a", newline="", encoding="utf-8") as file:
         writer = csv.writer(file)
         if write_header:
-            writer.writerow(["ID", "Date", "Test Number", "Visual Acuity"])
+            writer.writerow(["ID", "日時", "検査番号", "視力"])
         current_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         for result in results_summary:
             writer.writerow([user_id, current_date, result["test_number"], result["visual_acuity"]])
@@ -883,7 +885,7 @@ def run_app_session():
             # 立ち位置の案内を表示する
             image = np.ones((screen_height, screen_width, 3), dtype=np.uint8) * 255  # 白背景
             image = display_japanese_text(image, "後ろの立ち位置まで移動してください", (100, 400), font_size=70, color=(255, 0, 0))
-            image = display_japanese_text(image, "Please move to a standing position behind you.", (100, 600), font_size=70, color=(255, 0, 0))
+            image = display_japanese_text(image, "検査距離の位置で止まってください", (100, 600), font_size=70, color=(255, 0, 0))
 
             # 画面表示
             show_image("mainview", image)
@@ -892,7 +894,7 @@ def run_app_session():
             # 左目を隠す案内を表示する
             image = np.ones((screen_height, screen_width, 3), dtype=np.uint8) * 255  # 白背景
             image = display_japanese_text(image, "左目を隠してください", (100, 400), font_size=130, color=(255, 0, 0))
-            image = display_japanese_text(image, "Cover your left eye.", (100, 600), font_size=130, color=(255, 0, 0))
+            image = display_japanese_text(image, "右目で検査します", (100, 600), font_size=110, color=(255, 0, 0))
 
             # 画面表示
             show_image("mainview", image)
@@ -929,7 +931,7 @@ def run_app_session():
             # 右目を隠す案内を表示する
             image = np.ones((screen_height, screen_width, 3), dtype=np.uint8) * 255  # 白背景
             image = display_japanese_text(image, "右目を隠してください", (100, 400), font_size=130, color=(255, 0, 0))
-            image = display_japanese_text(image, "Cover your right eye.", (100, 600), font_size=130, color=(255, 0, 0))
+            image = display_japanese_text(image, "左目で検査します", (100, 600), font_size=110, color=(255, 0, 0))
 
             # 画面表示
             show_image("mainview", image)
@@ -964,7 +966,7 @@ def run_app_session():
             )
             force_terminate_program(cap=cap, hands=hands, exit_code=1)
         configure_camera_capture(cap)
-        configure_camera_preview_window()
+        configure_camera_preview_window(screen_width=screen_width)
         print(f"検査に使用するカメラ番号: {camera_index}")
 
         try:
@@ -1019,28 +1021,26 @@ def run_app_session():
                             current_index = min(current_index + 1, len(fixed_outer_diameters) - 1)
                             desired_outer_diameter_cm, visual_acuity = fixed_outer_diameters[current_index]
                             if visual_acuity == 1.0:
-                                result_text = "Visual Acuity : 1.0"
+                                result_text = "視力：1.0"
                                 result_color = (0, 255, 0)  # 緑色
                                 image = np.ones((screen_height, screen_width, 3), dtype=np.uint8) * 255
                                 font = cv2.FONT_HERSHEY_SIMPLEX
                                 font_scale = 3
                                 thickness = 5
-                                text_size = cv2.getTextSize(result_text, font, font_scale, thickness)[0]
-                                x = (image.shape[1] - text_size[0]) // 2
                                 y = screen_height * 2 // 3
-                                cv2.putText(image, result_text, (x, y), font, font_scale, result_color, thickness)
+                                image = display_japanese_text(image, result_text, (screen_width // 2 - 180, y - 80), font_size=90, color=result_color)
                                 show_image("mainview", image)
                                 wait_with_forced_exit(5000, cap=cap, hands=hands, watch_windows=["mainview", "camera"])
                                 break
                             correct_count = 0  # 次の段階へ進むので正答数をリセット
                             incorrect_count = 0  # 誤答数もリセット
-                            result_text = "PASS"
+                            result_text = "正解：次へ進みます"
                             result_color = (0, 255, 0)  # 緑色
                             showing_result = True
                     else:
                         incorrect_count += 1
                         if incorrect_count >= 2:
-                            result_text = "NO RESPONSE" if arm_direction is None else "FAIL"
+                            result_text = "反応がありません" if arm_direction is None else "不正解：検査終了"
                             result_color = (0, 0, 255)
                             if current_index > 0:
                                 previous_diameter, previous_acuity = fixed_outer_diameters[current_index - 1]
@@ -1048,10 +1048,11 @@ def run_app_session():
                                 font = cv2.FONT_HERSHEY_SIMPLEX
                                 font_scale = 2
                                 thickness = 5
-                                text_size = cv2.getTextSize(f"Previous Diameter: {previous_diameter:.2f} cm, Visual Acuity: {previous_acuity:.1f}", font, font_scale, thickness)[0]
+                                previous_text = f"判定結果：視力 {previous_acuity:.1f}（前のサイズ {previous_diameter:.2f} cm）"
+                                text_size = cv2.getTextSize(previous_text, font, font_scale, thickness)[0]
                                 x = (image.shape[1] - text_size[0]) // 2
                                 y = screen_height * 2 // 3
-                                cv2.putText(image, f"Previous Diameter: {previous_diameter:.2f} cm, Visual Acuity: {previous_acuity:.1f}", (x, y), font, font_scale, (0, 0, 255), thickness)
+                                image = display_japanese_text(image, previous_text, (max(40, x), y - 70), font_size=58, color=(0, 0, 255))
                                 show_image("mainview", image)
                                 wait_with_forced_exit(5000, cap=cap, hands=hands, watch_windows=["mainview", "camera"])  # 5 秒間待機
                             showing_result = True
@@ -1066,16 +1067,15 @@ def run_app_session():
                         text_size = cv2.getTextSize(result_text, font, font_scale, thickness)[0]
                         x = (image.shape[1] - text_size[0]) // 2
                         y = screen_height // 2
-                        cv2.putText(image, result_text, (x, y), font, font_scale, result_color, thickness)
+                        image = display_japanese_text(image, result_text, (max(40, x), y - 80), font_size=82, color=result_color)
 
                         # 正答数・誤答数と現在設定を表示する
-                        cv2.putText(image, f"Correct: {correct_count}", (50, 100), font, 1.5, (0, 255, 0), 2)
-                        cv2.putText(image, f"Incorrect: {incorrect_count}", (50, 200), font, 1.5, (0, 0, 255), 2)
-                        cv2.putText(image, f"Outer Diameter: {desired_outer_diameter_cm:.2f} cm", (50, 300), font, 1.5, (0, 0, 0), 2)
-                        cv2.putText(image, f"Visual Acuity: {visual_acuity:.1f}", (50, 400), font, 1.5, (0, 0, 255), 2)
-                        cv2.putText(image, f"Theory: {size_error['theoretical_cm']:.3f} cm", (50, 500), font, 1.1, (0, 0, 0), 2)
-                        cv2.putText(image, f"Display: {size_error['displayed_cm']:.3f} cm", (50, 560), font, 1.1, (0, 0, 0), 2)
-                        cv2.putText(image, f"Error: {size_error['error_mm']:+.2f} mm ({size_error['error_percent']:+.2f}%)", (50, 620), font, 1.1, (180, 0, 0), 2)
+                        image = display_japanese_text(image, f"正答：{correct_count}", (50, 90), font_size=44, color=(0, 160, 0))
+                        image = display_japanese_text(image, f"誤答：{incorrect_count}", (50, 155), font_size=44, color=(0, 0, 255))
+                        image = display_japanese_text(image, f"現在の視力値：{visual_acuity:.1f}", (50, 235), font_size=44, color=(0, 0, 180))
+                        image = display_japanese_text(image, f"ランドルト環外径：{desired_outer_diameter_cm:.2f} cm", (50, 300), font_size=40, color=(0, 0, 0))
+                        image = display_japanese_text(image, f"理論 {size_error['theoretical_cm']:.3f} cm / 表示 {size_error['displayed_cm']:.3f} cm", (50, 365), font_size=36, color=(0, 0, 0))
+                        image = display_japanese_text(image, f"表示誤差 {size_error['error_mm']:+.2f} mm（{size_error['error_percent']:+.2f}%）", (50, 425), font_size=36, color=(180, 0, 0))
 
                         # 結果を短時間表示する
                         show_image("mainview", image)
@@ -1095,10 +1095,11 @@ def run_app_session():
 
                 # 画面左上に正答数と誤答数を表示する
                 font = cv2.FONT_HERSHEY_SIMPLEX
-                cv2.putText(image, f"Correct: {correct_count}", (50, 100), font, 1.5, (0, 255, 0), 2)
-                cv2.putText(image, f"Incorrect: {incorrect_count}", (50, 200), font, 1.5, (0, 0, 255), 2)
-                cv2.putText(image, f"Theory {size_error['theoretical_cm']:.3f} cm / Display {size_error['displayed_cm']:.3f} cm", (50, 300), font, 1.0, (0, 0, 0), 2)
-                cv2.putText(image, f"Error {size_error['error_mm']:+.2f} mm ({size_error['error_percent']:+.2f}%)", (50, 350), font, 1.0, (180, 0, 0), 2)
+                image = display_japanese_text(image, f"正答：{correct_count}", (50, 85), font_size=42, color=(0, 160, 0))
+                image = display_japanese_text(image, f"誤答：{incorrect_count}", (50, 145), font_size=42, color=(0, 0, 255))
+                image = display_japanese_text(image, f"現在の視力値：{visual_acuity:.1f}", (50, 220), font_size=40, color=(0, 0, 180))
+                image = display_japanese_text(image, f"理論 {size_error['theoretical_cm']:.3f} cm / 表示 {size_error['displayed_cm']:.3f} cm", (50, 280), font_size=34, color=(0, 0, 0))
+                image = display_japanese_text(image, f"表示誤差 {size_error['error_mm']:+.2f} mm（{size_error['error_percent']:+.2f}%）", (50, 330), font_size=34, color=(180, 0, 0))
 
                 # 問題画面を表示する
                 show_image("mainview", image)
@@ -1109,7 +1110,7 @@ def run_app_session():
                         mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
 
                 # カメラ画面を表示する
-                cv2.putText(frame, "ESC: Exit", (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+                frame = display_japanese_text(frame, "ESC：終了", (20, 24), font_size=30, color=(0, 0, 255))
                 cv2.imshow("camera", frame)
 
                 # 終了キーを監視する
