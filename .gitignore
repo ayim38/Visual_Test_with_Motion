@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+
+# Virtual environments
+.venv/
+venv/
+
+# Build outputs
+build/
+dist/
+*.spec.bak
+
+# Local app outputs
+vision_results.csv
+screen_calibration.json
+
+# Large binaries should be uploaded to GitHub Releases, not committed.
+*.exe
+
+# Fonts can have redistribution restrictions. Use system fonts by default.
+meiryo.ttc
+
+# Local/editor files
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
