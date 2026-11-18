@@ -17,6 +17,11 @@ TEST_DISTANCE_M = 3.0
 CALIBRATION_SETTINGS_FILE = "screen_calibration.json"
 VISUAL_ACUITY_LEVELS = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 CAMERA_INDEX_CANDIDATES = [1, 0, 2, 3]
+CAMERA_CAPTURE_WIDTH = 640
+CAMERA_CAPTURE_HEIGHT = 480
+CAMERA_PREVIEW_WIDTH = 480
+CAMERA_PREVIEW_HEIGHT = 270
+CAMERA_PREVIEW_POSITION = (20, 20)
 
 def resource_path(rel_path: str) -> str:
     """PyInstaller 実行時にも使えるようにリソースの絶対パスを返す。"""
@@ -117,6 +122,19 @@ def open_available_camera(camera_indices=CAMERA_INDEX_CANDIDATES):
         cap.release()
 
     return None, None
+
+def configure_camera_capture(cap):
+    """カメラ取得解像度を低めに指定して、プレビューが大きくなりすぎるのを防ぐ。"""
+    if cap is None:
+        return
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, CAMERA_CAPTURE_WIDTH)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_CAPTURE_HEIGHT)
+
+def configure_camera_preview_window():
+    """カメラプレビューをメイン画面を邪魔しにくい小窓として表示する。"""
+    cv2.namedWindow("camera", cv2.WINDOW_NORMAL)
+    cv2.resizeWindow("camera", CAMERA_PREVIEW_WIDTH, CAMERA_PREVIEW_HEIGHT)
+    cv2.moveWindow("camera", CAMERA_PREVIEW_POSITION[0], CAMERA_PREVIEW_POSITION[1])
 
 def force_terminate_program(cap=None, hands=None, exit_code=0):
     """Release resources and terminate the program immediately."""
@@ -945,6 +963,8 @@ def run_app_session():
                 font_size=60,
             )
             force_terminate_program(cap=cap, hands=hands, exit_code=1)
+        configure_camera_capture(cap)
+        configure_camera_preview_window()
         print(f"検査に使用するカメラ番号: {camera_index}")
 
         try:
