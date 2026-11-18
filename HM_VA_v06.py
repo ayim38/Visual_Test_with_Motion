@@ -990,8 +990,8 @@ def run_app_session():
                 results = hands.process(rgb_frame)
 
                 # 現在の外径と線の太さをピクセルで求める
-                outer_diameter_px = int(desired_outer_diameter_cm * cm_to_px)
-                thickness_px = int(outer_diameter_px / 5)  # 線の太さは外径の 1/5
+                outer_diameter_px = max(1, int(round(desired_outer_diameter_cm * cm_to_px)))
+                thickness_px = max(1, int(round(outer_diameter_px / 5)))  # 線の太さは外径の 1/5
                 size_error = calculate_landolt_display_error(
                     visual_acuity=visual_acuity,
                     outer_diameter_px=outer_diameter_px,
