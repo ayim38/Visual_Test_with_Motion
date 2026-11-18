@@ -333,6 +333,10 @@ def get_user_id_with_keyboard():
     screen_height, screen_width = 1080, 1920
     keyboard_height = 400
     button_size = 100
+    input_box_x1 = 760
+    input_box_y1 = 470
+    input_box_x2 = 1480
+    input_box_y2 = 590
 
     # キーボードのボタン配置
     buttons = [
@@ -384,12 +388,22 @@ def get_user_id_with_keyboard():
     while True:
         # 入力画面を描画する
         image = np.ones((screen_height, screen_width, 3), dtype=np.uint8) * 255
-        image = display_japanese_text(image, "視機能検査 EASY Visual Check", (50, 100), font_size=100, color=(0, 0, 0))
-        image = display_japanese_text(image, "運動機能検査 and Motion Check", (50, 200), font_size=100, color=(0, 0, 0))
-        image = display_japanese_text(image, "IDを入力してください:", (50, 300), font_size=100, color=(0, 0, 0))
-        image = display_japanese_text(image, "IDを入力し、OKを押してください", (50, 400), font_size=82, color=(0, 0, 0))
+        image = display_japanese_text(image, "視機能検査 EASY Visual Check", (50, 80), font_size=88, color=(0, 0, 0))
+        image = display_japanese_text(image, "運動機能検査 and Motion Check", (50, 170), font_size=88, color=(0, 0, 0))
+        image = display_japanese_text(image, "IDを入力してください", (50, 285), font_size=82, color=(0, 0, 0))
+        image = display_japanese_text(image, "数字を押してIDを入力し、OKを押してください", (50, 365), font_size=54, color=(0, 0, 0))
+        image = display_japanese_text(image, "IDが不明な際は、年齢を入力してください。", (50, 425), font_size=54, color=(0, 0, 180))
         
-        cv2.putText(image, user_id, (1000, 500), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 255), 5)
+        cv2.rectangle(image, (input_box_x1, input_box_y1), (input_box_x2, input_box_y2), (245, 245, 245), -1)
+        cv2.rectangle(image, (input_box_x1, input_box_y1), (input_box_x2, input_box_y2), (80, 80, 80), 3)
+        display_id = user_id if user_id else "未入力"
+        id_color = (0, 0, 255) if user_id else (140, 140, 140)
+        id_font_scale = 2.4 if len(display_id) <= 8 else max(1.2, 2.4 - 0.12 * (len(display_id) - 8))
+        id_thickness = 4
+        text_size = cv2.getTextSize(display_id, cv2.FONT_HERSHEY_SIMPLEX, id_font_scale, id_thickness)[0]
+        id_x = input_box_x1 + max(24, (input_box_x2 - input_box_x1 - text_size[0]) // 2)
+        id_y = input_box_y1 + (input_box_y2 - input_box_y1 + text_size[1]) // 2
+        cv2.putText(image, display_id, (id_x, id_y), cv2.FONT_HERSHEY_SIMPLEX, id_font_scale, id_color, id_thickness)
         draw_keyboard(image)
         show_image("id_input", image)
 
